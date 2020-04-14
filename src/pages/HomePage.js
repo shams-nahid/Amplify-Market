@@ -24,7 +24,17 @@ class HomePage extends React.Component {
       this.setState({ isSearching: true });
       const result = await API.graphql(
         graphqlOperation(searchMarkets, {
-          filter: { name: { match: 'vue' } }
+          filter: {
+            or: [
+              { name: { match: searchTerm } },
+              { owner: { match: searchTerm } },
+              { tags: { match: searchTerm } }
+            ]
+          },
+          sort: {
+            field: 'createdAt',
+            direction: 'desc'
+          }
         })
       );
       console.log(result);
@@ -33,7 +43,7 @@ class HomePage extends React.Component {
         isSearching: false
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
 
@@ -48,7 +58,7 @@ class HomePage extends React.Component {
           handleClearSearch={this.handleClearSearch}
           handleSearch={this.handleSearch}
         />
-        <MarketList />
+        <MarketList searchResults={this.state.searchResults} />
       </>
     );
   }
