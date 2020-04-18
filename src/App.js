@@ -1,14 +1,18 @@
 import React from 'react';
 import { Authenticator, AmplifyTheme } from 'aws-amplify-react';
-import { Auth, Hub } from 'aws-amplify';
-import { BrowserRouter as Router, Route } from 'react-router-dom';
+import { Auth, Hub, API, graphqlOperation } from 'aws-amplify';
+import { Router, Route } from 'react-router-dom';
+import createBrowserHistory from 'history/createBrowserHistory';
 
 import './App.css';
+import { getUser } from './graphql/queries';
+import { registerUser } from './graphql/mutations';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import MarketPage from './pages/MarketPage';
 import Navbar from './components/Navbar';
 
+export const history = createBrowserHistory();
 export const UserContext = React.createContext();
 
 class App extends React.Component {
@@ -29,8 +33,8 @@ class App extends React.Component {
   onHubCapsule = capsule => {
     switch (capsule.payload.event) {
       case 'signIn':
-        console.log('Signed In');
         this.getUserData();
+        this.registerNewUser(capsule.payload.data);
         break;
       case 'signUp':
         console.log('Signed Up');
@@ -42,6 +46,31 @@ class App extends React.Component {
         break;
       default:
         return;
+    }
+  };
+
+  registerNewUser = async signInData => {
+    const { email, sub } = signInData.signInUserSession.idToken.payload;
+    const { username } = signInData;
+    const getUserInput = {
+      id: sub
+    };
+    const { data } = await API.graphql(graphqlOperation(getUser, getUserInput));
+    if (!data.getUser) {
+      try {
+        const registerUserInput = {
+          id: sub,
+          username,
+          email,
+          registered: true
+        };
+        const newUser = await API.graphql(
+          graphqlOperation(registerUser, { input: registerUserInput })
+        );
+        console.log(newUser);
+      } catch (error) {
+        console.error(error);
+      }
     }
   };
 
@@ -59,7 +88,7 @@ class App extends React.Component {
       <Authenticator theme={theme} />
     ) : (
       <UserContext.Provider value={{ user }}>
-        <Router>
+        <Router history={history}>
           <>
             <Navbar user={user} handleSignOut={this.handleSignOut} />
             <div className='app-container'>
