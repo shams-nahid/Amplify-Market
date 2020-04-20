@@ -11,12 +11,12 @@ import {
 import NewProduct from '../components/NewProduct';
 import Product from '../components/Product';
 
-export const getMarket = /* GraphQL */ `
+const getMarket = /* GraphQL */ `
   query GetMarket($id: ID!) {
     getMarket(id: $id) {
       id
       name
-      products {
+      products(sortDirection: DESC, limit: 999) {
         items {
           id
           description
@@ -41,7 +41,8 @@ class MarketPage extends React.Component {
   state = {
     market: null,
     isLoading: true,
-    isOwner: false
+    isOwner: false,
+    isEmailVerified: false
   };
 
   componentDidMount() {
@@ -109,9 +110,15 @@ class MarketPage extends React.Component {
     };
     const result = await API.graphql(graphqlOperation(getMarket, input));
     console.log(result);
-    this.setState({ market: result.data.getMarket, isLoading: false }, () =>
-      this.checkMarketOwner()
-    );
+    this.setState({ market: result.data.getMarket, isLoading: false }, () => {
+      this.checkMarketOwner();
+      this.checkEmailVerified();
+    });
+  };
+
+  checkEmailVerified = () => {
+    const { userAttributes } = this.props;
+    this.setState({ isEmailVerified: userAttributes.email_verified });
   };
 
   checkMarketOwner = () => {
@@ -123,7 +130,7 @@ class MarketPage extends React.Component {
   };
 
   render() {
-    const { market, isLoading, isMarketOwner } = this.state;
+    const { market, isLoading, isMarketOwner, isEmailVerified } = this.state;
     return isLoading ? (
       <Loading fullscreen />
     ) : (
@@ -152,7 +159,13 @@ class MarketPage extends React.Component {
               }
               name='1'
             >
-              <NewProduct marketId={this.props.marketId} />
+              {isEmailVerified ? (
+                <NewProduct marketId={this.props.marketId} />
+              ) : (
+                <Link to='/profile' className='header'>
+                  Verify Your Email to Before Adding Product
+                </Link>
+              )}
             </Tabs.Pane>
           )}
           <Tabs.Pane
